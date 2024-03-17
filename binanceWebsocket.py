@@ -13,8 +13,10 @@ logger = get_logger(__name__)
 # proxies = { 'https': 'http://127.0.0.1:2081' }
 
 def place_order(symbol, side):
-    api.adjust_leverage(market=symbol+"USD", leverage=coinex.leverage, position_type=side)
-    api.put_market_order(market=symbol+"USD", side=side, amount=coinex.trade_value)
+    res = api.adjust_leverage(market=symbol+"USD", leverage=coinex.leverage, position_type=side)
+    logger.info(f"{res}")
+    res = api.put_market_order(market=symbol+"USD", side=side, amount=coinex.trade_value)
+    logger.info(f"{res}")
     logger.info(msg=f"place order: {symbol}---{side}---{coinex.trade_value}")
 
 def close_order(symbol):
@@ -22,7 +24,8 @@ def close_order(symbol):
     if data['data']:
         data = data['data'][0]
         position_id = data['position_id']
-        api.close_market(market=symbol+"USD", position_id=position_id)
+        res = api.close_market(market=symbol+"USD", position_id=position_id)
+        logger.info(f"{res}")
         logger.info(f"close order: {symbol}")
 
 
