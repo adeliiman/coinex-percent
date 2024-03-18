@@ -2,7 +2,8 @@
 #!/usr/bin/env python
 
 import time, random, json, threading
-import logging
+from datetime import datetime
+from database import SessionLocal
 from binance.lib.utils import config_logging
 from binance.websocket.cm_futures.websocket_client import CMFuturesWebsocketClient
 from main import coinex, api
@@ -18,6 +19,19 @@ def place_order(symbol, side):
     res = api.put_market_order(market=symbol+"USD", side=side, amount=coinex.trade_value)
     logger.info(f"{res}")
     logger.info(msg=f"place order: {symbol}---{side}---{coinex.trade_value}")
+    #
+    from models import Signal
+    signal = Signal()
+    signal.symbol = symbol
+    signal.side = side
+    signal.qty = coinex.trade_value
+    # signal.time = datetime.fromtimestamp(time_/1000)
+    signal.time = datetime.now().strftime('%y-%m-%d %H:%M:%S')
+    db = SessionLocal()
+    db.add(signal)
+    db.commit()
+    db.close()
+    logger.info(f"load to sqlite. {symbol}---{side}---{datetime.now().strftime('%y-%m-%d %H:%M:%S')}")
 
 def close_order(symbol):
     data = api.query_position_pending(market=symbol+"USD")
