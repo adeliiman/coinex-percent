@@ -47,49 +47,50 @@ def close_order(symbol):
 def message_handler(_, message):
     try:
         data = json.loads(message)
-        data = data['k']
-        # print(data['k'])
-        symbol = data['s'].split("USD_")[0] # BTC
-        interval = data['i']
-        sym = symbol+"_"+interval # BTC_1m
-        open_price = float(data['o'])
-        close_price = float(data['c'])
-        is_kline_closed = data['x']
+        if 'k' in data.keys():
+            data = data['k']
+            print(data)
+            symbol = data['s'].split("USD_")[0] # BTC
+            interval = data['i']
+            sym = symbol+"_"+interval # BTC_1m
+            open_price = float(data['o'])
+            close_price = float(data['c'])
+            is_kline_closed = data['x']
 
-        if is_kline_closed:
-            coinex.kline[sym] = True
+            if is_kline_closed:
+                coinex.kline[sym] = True
 
-        if coinex.kline.get(sym):
-            delta = (close_price - open_price) / open_price # 0.05
+            if coinex.kline.get(sym):
+                delta = (close_price - open_price) / open_price # 0.05
 
-            if delta > coinex.percent.get(interval) and not coinex.position.get(sym):
-                coinex.position[sym] = "Long"
-                threading.Thread(target=place_order, kwargs={'symbol':symbol, 'side':2}).start()
+                if delta > coinex.percent.get(interval) and not coinex.position.get(sym):
+                    coinex.position[sym] = "Long"
+                    threading.Thread(target=place_order, kwargs={'symbol':symbol, 'side':2}).start()
 
-            elif -1*delta > coinex.percent.get(interval) and not coinex.position.get(sym):
-                coinex.position[sym] = "Short"
-                threading.Thread(target=place_order, kwargs={'symbol':symbol, 'side':1}).start()
+                elif -1*delta > coinex.percent.get(interval) and not coinex.position.get(sym):
+                    coinex.position[sym] = "Short"
+                    threading.Thread(target=place_order, kwargs={'symbol':symbol, 'side':1}).start()
 
-            if coinex.position.get(sym) == "Long":
-                coinex.pivot[sym] = max(close_price, coinex.pivot[sym]) if coinex.pivot.get(sym) else close_price
+                if coinex.position.get(sym) == "Long":
+                    coinex.pivot[sym] = max(close_price, coinex.pivot[sym]) if coinex.pivot.get(sym) else close_price
 
-                if ((coinex.pivot[sym] - close_price) / close_price) > coinex.exit_percent:
-                    del coinex.kline[sym]
-                    del coinex.position[sym]
-                    del coinex.pivot[sym]
-                    #
-                    threading.Thread(target=close_order, kwargs={'symbol':symbol}).start()
-                    print("Close Long .................")
-            elif coinex.position.get(sym) == "Short":
-                coinex.pivot[sym] = min(close_price, coinex.pivot[sym]) if coinex.pivot.get(sym) else close_price
+                    if ((coinex.pivot[sym] - close_price) / close_price) > coinex.exit_percent:
+                        del coinex.kline[sym]
+                        del coinex.position[sym]
+                        del coinex.pivot[sym]
+                        #
+                        threading.Thread(target=close_order, kwargs={'symbol':symbol}).start()
+                        print("Close Long .................")
+                elif coinex.position.get(sym) == "Short":
+                    coinex.pivot[sym] = min(close_price, coinex.pivot[sym]) if coinex.pivot.get(sym) else close_price
 
-                if ((close_price - coinex.pivot[sym]) / coinex.pivot[sym]) > coinex.exit_percent:
-                    del coinex.kline[sym]
-                    del coinex.position[sym]
-                    del coinex.pivot[sym]
-                    #
-                    threading.Thread(target=close_order, kwargs={'symbol':symbol}).start()
-                    print("Close Short ...........")
+                    if ((close_price - coinex.pivot[sym]) / coinex.pivot[sym]) > coinex.exit_percent:
+                        del coinex.kline[sym]
+                        del coinex.position[sym]
+                        del coinex.pivot[sym]
+                        #
+                        threading.Thread(target=close_order, kwargs={'symbol':symbol}).start()
+                        print("Close Short ...........")
     except Exception as e:
         logger.exception(msg=f"{e}")
 
@@ -101,7 +102,7 @@ def ws():
             for interval in coinex.percent.keys():
                 my_client.kline(symbol=f"{symbol.lower()}usd_perp",id=random.randint(1, 99999),interval=interval)
     
-    def on_close():
+    def on_close(self):
         if coinex.bot == "Run":
             job()
             logger.info("re run socket ... ... ... ... ... ...")
