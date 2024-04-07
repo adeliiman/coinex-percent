@@ -10,6 +10,8 @@ from fastapi.responses import RedirectResponse
 from utils import get_user_params
 from contextlib import asynccontextmanager
 import threading
+from contextlib import asynccontextmanager
+from main import coinex
 
 
 
@@ -19,6 +21,7 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    
     yield
 
 
@@ -32,15 +35,16 @@ admin.add_view(UserSymbolAdmin)
 admin.add_view(SignalAdmin)
 
 
-from main import coinex
 
 @app.get('/run')
 async def run(tasks: BackgroundTasks, db: Session=Depends(get_db)):
 
     get_user_params(db=db)
     coinex.bot = "Run"
-    from binanceWebsocket import ws
-    threading.Thread(target=ws).start()
+    # from binanceWebsocket import ws
+    from binanceWs import schedule
+    threading.Thread(target=schedule).start()
+    # tasks.add_task(func=schedule)
     logger.info("Coinex started ... ... ...")
     return  RedirectResponse(url="/admin/home")
 
@@ -48,7 +52,8 @@ async def run(tasks: BackgroundTasks, db: Session=Depends(get_db)):
 @app.get('/stop')
 def stop():
     coinex.bot = "Stop"
-    logger.info("Bingx stoped. ................")
+    if coinex.bot == "Run":
+        logger.info("Bingx stoped. ................")
     return  RedirectResponse(url="/admin/home")
 
 
