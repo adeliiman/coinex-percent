@@ -9,18 +9,19 @@ from binance import ThreadedWebsocketManager
 logger = get_logger(__name__)
 
 
-def place_order(symbol, side):
-    res = api.adjust_leverage(market=symbol+"USD", leverage=coinex.leverage, position_type=side)
+def place_order(symbol, side, price):
+    res = api.adjust_leverage(market=symbol+"USDT", leverage=coinex.leverage, position_type=side)
     logger.info(f"{res}")
-    res = api.put_market_order(market=symbol+"USD", side=side, amount=coinex.trade_value)
+    qty = round(coinex.trade_value/price, 6)
+    res = api.put_market_order(market=symbol+"USDT", side=side, amount=qty)
     logger.info(f"{res}")
-    logger.info(msg=f"place order: {symbol}---{side}---{coinex.trade_value}")
+    logger.info(msg=f"place order: {symbol}---{side}---{qty}")
     #
     from models import Signal
     signal = Signal()
     signal.symbol = symbol
     signal.side = side
-    signal.qty = coinex.trade_value
+    signal.qty = str(coinex.trade_value)
     # signal.time = datetime.fromtimestamp(time_/1000)
     signal.time = datetime.now().strftime('%y-%m-%d %H:%M:%S')
     db = SessionLocal()
@@ -30,12 +31,12 @@ def place_order(symbol, side):
     logger.info(f"load to sqlite. {symbol}---{side}---{datetime.now().strftime('%y-%m-%d %H:%M:%S')}")
 
 def close_order(symbol):
-    data = api.query_position_pending(market=symbol+"USD")
+    data = api.query_position_pending(market=symbol+"USDT")
     print(data)
     if data['data']:
         data = data['data'][0]
         position_id = data['position_id']
-        res = api.close_market(market=symbol+"USD", position_id=position_id)
+        res = api.close_market(market=symbol+"USDT", position_id=position_id)
         logger.info(f"{res}")
         logger.info(f"close order: {symbol}")
 
@@ -68,11 +69,11 @@ class BinanceWs:
 
                     if delta > coinex.percent.get(interval) and not coinex.position.get(sym):
                         coinex.position[sym] = "Long"
-                        threading.Thread(target=place_order, kwargs={'symbol':symbol, 'side':2}).start()
+                        threading.Thread(target=place_order, kwargs={'symbol':symbol, 'side':2, 'prcie':close_price}).start()
 
                     elif -1*delta > coinex.percent.get(interval) and not coinex.position.get(sym):
                         coinex.position[sym] = "Short"
-                        threading.Thread(target=place_order, kwargs={'symbol':symbol, 'side':1}).start()
+                        threading.Thread(target=place_order, kwargs={'symbol':symbol, 'side':1, 'prcie':close_price}).start()
 
                     if coinex.position.get(sym) == "Long":
                         coinex.pivot[sym] = max(close_price, coinex.pivot[sym]) if coinex.pivot.get(sym) else close_price

@@ -19,7 +19,7 @@ def get_user_params(db: Session):
 
         coinex.leverage = user.leverage
         coinex.exit_percent = user.exit_percent / 100
-        coinex.trade_value = user.trade_value
+        coinex.trade_value = float(user.trade_value)
         
         coinex.symbols = []
         for symbol in user_symbols:
